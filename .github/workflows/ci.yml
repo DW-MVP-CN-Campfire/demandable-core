@@ -14,13 +14,11 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  test:
+  lint:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
     permissions:
       contents: read
-
     steps:
       - uses: actions/checkout@v4
         with:
@@ -33,16 +31,58 @@ jobs:
           cache: npm
 
       - name: Install
-        run: |
-          set -Eeuo pipefail
-          npm ci
+        run: npm ci
 
       - name: Lint
-        run: |
-          set -Eeuo pipefail
-          npm run lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+  test-ts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build
+        run: npm run build
 
       - name: Test
-        run: |
-          set -Eeuo pipefail
-          npm test
+        run: npm test
+
+  test-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          submodules: recursive
+
+      - uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Build
+        run: forge build --sizes
+
+      - name: Test
+        run: forge test -vvv
